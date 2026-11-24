@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fábrica Infinita</title>
+<style>
+:root{--bg:#f3f1ea;--pn:#fff;--tx:#1d1d1f;--mu:#666;--ln:#d8d5cc;--cv:#e6e3d8;--fl:#efece1;--ac:#2f6fed;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15161a;--pn:#22242b;--tx:#eee;--mu:#9aa0aa;--ln:#383b45;--cv:#0c0d10;--fl:#17181d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15161a;--pn:#22242b;--tx:#eee;--mu:#9aa0aa;--ln:#383b45;--cv:#0c0d10;--fl:#17181d;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:14px system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden;user-select:none;-webkit-user-select:none}
+#top{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;gap:8px;background:var(--pn);border-bottom:1px solid var(--ln)}
+#money{font-weight:700;font-size:18px;color:#1f9d4a}
+#info{font-size:11px;color:var(--mu);text-align:center;flex:1;line-height:1.35}
+button{font:inherit;border:1px solid var(--ln);background:var(--pn);color:var(--tx);border-radius:8px;padding:8px 10px}
+button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+#pb{background:#ffb020;color:#000;border-color:#ffb020;font-weight:700}
+#main{flex:1;min-height:0;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;background:var(--cv)}
+#hint{position:absolute;left:0;right:0;top:4px;text-align:center;font-size:12px;color:var(--mu);pointer-events:none}
+#toast{position:absolute;left:8px;right:8px;top:24px;background:#000d;color:#fff;border-radius:8px;padding:8px;text-align:center;display:none;pointer-events:none;z-index:5}
+#zb{position:absolute;right:8px;bottom:10px;display:flex;flex-direction:column;gap:6px}
+#zb button{width:38px;padding:8px 0;font-weight:700}
+#bar{display:flex;gap:6px;padding:8px;background:var(--pn);border-top:1px solid var(--ln)}
+#bar button{flex:1;padding:10px 2px;font-size:13px}
+#sheet{position:absolute;left:0;right:0;bottom:0;height:68%;background:var(--pn);border-top:1px solid var(--ln);border-radius:14px 14px 0 0;display:none;flex-direction:column;z-index:4}
+#sh{display:flex;justify-content:space-between;align-items:center;padding:8px 10px 0;font-weight:700}
+.tabs{display:flex;gap:4px;padding:6px 8px;overflow-x:auto;flex:none}
+.tabs button{white-space:nowrap;padding:5px 9px;font-size:12px}
+#list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:0 8px 12px}
+.it{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:6px 8px;margin-bottom:4px}
+.it small{display:block;color:var(--mu);font-size:11px}
+.it button{min-width:78px;font-weight:600}
+pre{white-space:pre-wrap;font:inherit;margin:6px 2px}
+#rw{position:absolute;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:6;padding:14px}
+.rb{background:var(--pn);border-radius:14px;padding:14px;max-width:340px;width:100%;max-height:80%;overflow-y:auto;display:flex;flex-direction:column;gap:8px;text-align:center}
+.rc{border:2px solid;border-radius:10px;padding:8px;animation:pop .4s both}.rc small{display:block;color:var(--mu);font-size:11px}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+#tu{position:absolute;left:8px;right:8px;bottom:8px;background:var(--pn);border:2px solid var(--ac);border-radius:12px;padding:10px;z-index:7;display:none;font-size:13px;line-height:1.4}
+#tu>div{margin:6px 0}.tb{display:flex;justify-content:space-between;align-items:center}
+</style></head><body>
+<div id="top"><div id="money">$0</div><div id="info"></div><button id="pb">⭐ Prestigio</button></div>
+<div id="main"><canvas id="cv"></canvas><div id="hint"></div><div id="toast"></div><div id="rw"></div><div id="tu"></div>
+<div id="zb"><button id="zi">＋</button><button id="zo">－</button><button id="zf">⤢</button></div>
+<div id="sheet"><div id="sh"><span id="st"></span><button id="x">✕</button></div><div class="tabs" id="t1"></div><div class="tabs" id="t2"></div><div id="list"></div></div></div>
+<div id="bar"><button id="bs">🛒 Tienda</button><button id="bi">🎒 Inv.</button><button id="br">🗑 Quitar</button><button id="bo">↻ Girar</button><button id="bm">💾 Menú</button></div>
+<script>
+const $=s=>document.querySelector(s),W=24,H=28,DIR=[[0,-1],[1,0],[0,1],[-1,0]];
+const RA=[{n:'Común',c:'#9aa0aa'},{n:'Poco común',c:'#3fbf55'},{n:'Raro',c:'#4a8cff'},{n:'Épico',c:'#b45aff'},{n:'Legendario',c:'#ffaa00'}];
+const LVN=['Común','Poco común','Raro','Épico','Místico'],LVC=['#ffd24a','#ffb020','#ff7a1f','#ff4d4d','#ff3cf0'];
+const EL=['Fuego','Agua','Tierra','Aire','Rayo'],EC=['#ff5a28','#3c8cff','#a8742f','#bfe3ff','#ffe632'];
+const CVN=['Ácido','Óxido','Radiactivo'],CC=['#7dff3c','#ff8a3c','#d6ff00'];
+const UT=['Multiplicador','Sumador','Elemental','Refinado','Incubadora','Corrosivo','Neutralizante'],UC=['#3c78c8','#3c9ec8','#9c5ac8','#c89c3c','#2fae86','#6ea82c','#c83c78'],SYM=['×','+','◆','♨','⌛','☢','✚'];
+const f1=x=>x.toFixed(1),f2=x=>x.toFixed(2);
+const SUF=['K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+function fmt(n){if(!isFinite(n))return'0';if(n<1000)return n<10?n.toFixed(1):''+Math.floor(n);const e=Math.floor(Math.log10(n)/3);return e>SUF.length?n.toExponential(2):(n/1000**e).toFixed(2)+SUF[e-1]}
+// z = tamaños [ancho, largo] que crecen con el nivel del objeto
+const CATS={
+DR:{l:'Dropper',n:280,col:'#6d6d78',z:[[1,1],[2,1],[2,2],[3,2],[3,3]],f:i=>({p:40*1.07**i,v:2*1.055**i,iv:Math.max(.4,3-i*.009)}),d:d=>'Valor '+fmt(d.v)+' · cada '+f1(d.iv)+'s · '+EL[d.el]},
+UP:{l:'Upgrader',n:240,col:'#3c78c8',z:[[1,1],[1,2],[2,2],[2,3]],f:i=>{const y=i%7;return{p:100*1.065**i,sp:8,m:y===2?1.8+i*.03:y===3?2.2+i*.03:y===6?1.1+i*.004:1.15+i*.015,a:3*1.05**i,r:y===4?.15+i*.006:2+i*.03,cv:Math.floor(i/7)%3}},
+ d:d=>['x'+f2(d.m),'+'+fmt(d.a)+' al valor','x'+f2(d.m)+' si coincide '+EL[d.el]+' (si no, x1.05)','x'+f2(d.m)+' solo si ya pasó por un horno (si no, x1.02)','+'+Math.round(d.r*100)+'%/s mientras está encima','+'+Math.round(d.r*100)+'%/s · corroe ('+CVN[d.cv]+'): destruye el drop en 3s','Quita corrosión '+CVN[d.cv]+' · x'+f2(d.m)][d.i%7]},
+HO:{l:'Horno',n:180,col:'#c8502a',z:[[2,2],[2,3],[3,3]],f:i=>({p:250*1.07**i,m:2+i*.04,sp:8,pur:i%5===0}),d:d=>'Refina x'+f2(d.m)+' (x1.5 con '+EL[d.el]+')'+(d.pur?' · purifica corrosión':'')},
+CI:{l:'Cinta',n:100,col:'#3a3a40',z:[[1,1],[1,2],[1,3]],f:i=>({p:20*1.05**i,sp:6+i*.1}),d:d=>'Velocidad '+f1(d.sp)},
+BA:{l:'Barrera',n:50,col:'#a09a3c',z:[[1,1],[2,1],[3,1],[4,1]],f:i=>({p:30*1.04**i}),d:()=>'Bloquea el paso'},
+TP:{l:'Teletransp.',n:40,col:'#963cc8',z:[[1,1],[2,2]],f:i=>({p:150*1.06**i,cd:Math.max(.3,2-i*.04),sp:6}),d:d=>'Se enlaza por pares (en orden de colocación)'},
+PU:{l:'Compuerta',n:40,col:'#3ca06e',z:[[1,1],[2,1],[3,1]],f:i=>({p:60*1.05**i,sp:6,trap:i%2===1}),d:d=>(d.trap?'Atrapa los drops':'Detiene los drops')+' al cerrar · toca su botón'},
+IN:{l:'Inversor',n:30,col:'#dc8c28',z:[[1,1],[2,1]],f:i=>({p:80*1.06**i,sp:6+i*.2}),d:()=>'Toca su botón para invertir el sentido'},
+RD:{l:'Radar',n:40,col:'#2a8a9a',z:[[1,1],[2,2]],f:i=>({p:60*1.06**i,sp:6+i*.1}),d:()=>'Muestra valor y corrosión de cada drop'}};
+const ORDER=Object.keys(CATS),MOV={UP:1,HO:1,CI:1,TP:1,IN:1,RD:1};
+const MATS='Cobre,Hierro,Estaño,Bronce,Plata,Oro,Platino,Cobalto,Níquel,Zinc,Titanio,Cuarzo,Jade,Rubí,Zafiro,Esmeralda,Ónix,Obsidiana,Diamante,Mithril'.split(',');
+const ID={},BY={},RB=[[],[],[],[],[]],LB=[[],[],[],[],[]];let TOTAL=0;
+for(const k of ORDER){const c=CATS[k];BY[k]=[];for(let i=1;i<=c.n;i++){const q=i/c.n,r=q<=.3?0:q<=.55?1:q<=.75?2:q<=.9?3:4,d=c.f(i),zz=c.z[Math.min(c.z.length-1,Math.floor(q*c.z.length-1e-9))];
+d.id=k+String(i).padStart(3,'0');d.k=k;d.i=i;d.r=r;d.w=zz[0];d.h=zz[1];d.el=i%5;d.name=(k==='UP'?UT[i%7]:k==='PU'&&d.trap?'Trampa':c.l)+' '+MATS[(i-1)%20]+' Mk'+Math.ceil(i/20);
+if(r===4){const b0=Math.round(.9*c.n);d.lv=Math.min(4,Math.floor((i-b0-1)/(c.n-b0)*5))}d.p=r<4?Math.floor(d.p):null;d.desc=c.d(d)+' · '+d.w+'×'+d.h;ID[d.id]=d;BY[k].push(d);if(r<4)RB[r].push(d);else LB[d.lv].push(d);TOTAL++}}
+const GROUPS=[{n:'Droppers',s:[{l:'',a:BY.DR}]},{n:'Upgraders',s:UT.map((u,j)=>({l:u,a:BY.UP.filter(d=>d.i%7===j)}))},{n:'Hornos',s:[{l:'',a:BY.HO}]},
+{n:'Cintas',s:['CI','BA','TP','PU','IN'].map(k=>({l:CATS[k].l,a:BY[k]}))},{n:'Radar',s:[{l:'',a:BY.RD}]},{n:'Cofres',ch:1,s:[{l:'',a:[]}]}];
+// prestigios
+const cost=p=>20000*2.4**(p-1),mult=p=>1+.2*p,cap=()=>100+5*S.p,mcap=()=>120+10*S.p;
+function odds(p){const t=p/100,a=[50,28,14,6,2],b=[10,25,30,25,10];return a.map((x,i)=>(x*(1-t)+b[i]*t)/100)}
+function roll(p){const out=[],o=odds(p),n=1+Math.floor(p/10);for(let r=0;r<n;r++){let x=Math.random(),a=0,v=4;for(let i=0;i<5;i++){a+=o[i];if(x<=a){v=i;break}}if(p%10===0&&r===0)v=Math.random()<.2?4:3;const l=LB[v];out.push(l[Math.floor(Math.random()*l.length)].id)}return out}
+// estado
+let S={m:150,p:0,inv:{},col:{},lay:{}},slot=1,G=new Array(W*H).fill(null),T=[],ores=[],fl=[],uid=0,mode=null,sel=null,rot=0,hov=null,down=false,lastC=-1,grp=0,sub=0,panel=null,arm=0,tt=0,acc=0,ips=0,errs=0,errT=0;
+const isCol=(x,y)=>y===H-1&&x>=10&&x<=13;
+const dims=(id,r)=>r%2?[ID[id].h,ID[id].w]:[ID[id].w,ID[id].h];
+function fits(id,x,y,r){const[cw,ch]=dims(id,r);if(x<0||y<0||x+cw>W||y+ch>H)return false;for(let j=y;j<y+ch;j++)for(let i=x;i<x+cw;i++)if(G[j*W+i]||isCol(i,j))return false;return true}
+function mkT(id,x,y,r,dir,open){const d=ID[id],[cw,ch]=dims(id,r),t={id,k:d.k,x,y,rot:r,cw,ch,dir:dir||1,open:open!==0,uid:++uid,t:0,cd:0,last:0};T.push(t);for(let j=y;j<y+ch;j++)for(let i=x;i<x+cw;i++)G[j*W+i]=t;return t}
+function rem(t){T=T.filter(a=>a!==t);for(let j=t.y;j<t.y+t.ch;j++)for(let i=t.x;i<t.x+t.cw;i++)if(G[j*W+i]===t)G[j*W+i]=null}
+// auto-reparación: corrige estados inválidos sin perder progreso
+function heal(){S.lay=S.lay&&typeof S.lay==='object'?S.lay:{};if(!isFinite(S.m)||S.m<0)S.m=0;if(!isFinite(S.p)||S.p<0)S.p=0;S.p=Math.min(100,Math.floor(S.p));
+for(const k in S.inv)if(!ID[k]||!(S.inv[k]>0)||!isFinite(S.inv[k]))delete S.inv[k];
+ores=ores.filter(o=>isFinite(o.x+o.y+o.v)&&o.v>=0);fl=fl.filter(f=>isFinite(f.x+f.y));
+const old=T;T=[];G.fill(null);for(const t of old)if(ID[t.id]&&fits(t.id,t.x,t.y,t.rot))mkT(t.id,t.x,t.y,t.rot,t.dir,t.open?1:0);else if(ID[t.id])S.inv[t.id]=(S.inv[t.id]||0)+1}
+function fixed(){if(Date.now()-errT>5000){errT=Date.now();toast('Se detectó un error y se corrigió automáticamente')}}
+function loadD(d,off){try{if(!d)return;S.lay=d.lay||{};S.m=+d.m||0;S.p=+d.p||0;S.inv=d.inv||{};(d.col||[]).forEach(i=>S.col[i]=1);
+for(const a of d.t||[]){const[id,x,y,r,dr,op]=a;if(!ID[id])continue;if(fits(id,x,y,r))mkT(id,x,y,r,dr,op);else S.inv[id]=(S.inv[id]||0)+1}
+if(off&&d.ts&&d.ips>0){const s=Math.min(7200,(Date.now()-d.ts)/1000);if(s>60){const g=d.ips*s*.5;S.m+=g;setTimeout(()=>toast('Ganaste $'+fmt(g)+' mientras no estabas'),600)}}}catch(e){}heal()}
+function snap(){return{m:S.m,p:S.p,inv:S.inv,col:Object.keys(S.col),ts:Date.now(),ips,lay:S.lay,t:lay()}}
+function save(){try{localStorage.setItem('fi3_'+slot,JSON.stringify(snap()));localStorage.setItem('fi3_a',slot)}catch(e){}}
+function toast(s){const e=$('#toast');e.textContent=s;e.style.display='block';clearTimeout(tt);tt=setTimeout(()=>e.style.display='none',2800)}
+const pf=(x,y,s)=>{fl.push({x,y,s,t:1});if(fl.length>40)fl.shift()};
+const blk=(x,y)=>{if(x<0||y<0||x>=W||y>=H)return true;const t=G[y*W+x];return!!t&&(t.k==='BA'||(t.k==='PU'&&!t.open&&!ID[t.id].trap))};
+// simulación
+function upd(dt){const tp=[];
+for(const t of T){const d=ID[t.id];
+if(t.k==='DR'){t.t+=dt;if(t.t>=d.iv){t.t=0;if(ores.length<cap()){const f=[[t.x+t.cw/2,t.y-.5],[t.x+t.cw+.5,t.y+t.ch/2],[t.x+t.cw/2,t.y+t.ch+.5],[t.x-.5,t.y+t.ch/2]][t.rot],j=(Math.random()-.5)*.2;
+if(!blk(Math.floor(f[0]),Math.floor(f[1])))ores.push({x:f[0]+(t.rot%2?0:j),y:f[1]+(t.rot%2?j:0),v:d.v,el:d.el,rf:0,seen:{},tp:0,age:0,cor:null,rd:0})}}}
+else if(t.k==='TP'){t.cd-=dt;tp.push(t)}}
+tp.sort((a,b)=>a.uid-b.uid);
+for(let j=ores.length-1;j>=0;j--){const o=ores[j];o.age+=dt;o.tp-=dt;o.rd-=dt;
+if(o.cor){o.cor.t-=dt;if(o.cor.t<=0){pf(o.x,o.y,'✖ corroído');ores.splice(j,1);continue}}
+const gx=Math.floor(o.x),gy=Math.floor(o.y);
+if(o.age>45||gx<0||gy<0||gx>=W||gy>=H){ores.splice(j,1);continue}
+if(isCol(gx,gy)){const g=o.v*mult(S.p);S.m+=g;acc+=g;pf(o.x,o.y,'+$'+fmt(g));ores.splice(j,1);continue}
+const t=G[gy*W+gx];if(!t)continue;const d=ID[t.id],k=t.k,once=!o.seen[t.uid];
+if(k==='UP'){const y=d.i%7;
+if(y===4||y===5){o.v*=1+d.r*dt;if(y===5&&!o.cor)o.cor={v:d.cv,t:3}}
+else if(once){o.seen[t.uid]=1;if(y===0)o.v*=d.m;else if(y===1)o.v+=d.a;else if(y===2)o.v*=o.el===d.el?d.m:1.05;else if(y===3)o.v*=o.rf?d.m:1.02;else if(o.cor&&o.cor.v===d.cv){o.cor=null;o.v*=d.m}}}
+else if(k==='HO'&&once){o.seen[t.uid]=1;if(!o.rf){o.rf=1;o.v*=d.m*(o.el===d.el?1.5:1)}if(d.pur)o.cor=null}
+else if(k==='RD'){o.rd=1;t.last=o.v}
+else if(k==='TP'&&o.tp<=0&&t.cd<=0){const i=tp.indexOf(t),q=tp[i%2?i-1:i+1];if(q){t.cd=d.cd;o.x=q.x+q.cw/2;o.y=q.y+q.ch/2;o.tp=1.2;continue}}
+if(k==='PU'){o.age=0;if(!t.open)continue}
+if(!(MOV[k]||k==='PU'))continue;
+const dx=DIR[t.rot][0]*t.dir,dy=DIR[t.rot][1]*t.dir,s=(d.sp||6)*.5*dt,nx=o.x+dx*s,ny=o.y+dy*s,ncx=Math.floor(nx),ncy=Math.floor(ny);
+if((ncx!==gx||ncy!==gy)&&blk(ncx,ncy)){o.age=0;continue}
+o.x=nx;o.y=ny;if((dx===0?t.cw:t.ch)===1){const kk=Math.min(1,8*dt);if(dx===0)o.x+=(gx+.5-o.x)*kk;else o.y+=(gy+.5-o.y)*kk}}
+for(const f of fl)f.t-=dt*.8;fl=fl.filter(f=>f.t>0)}
+// dibujo
+const cv=$('#cv'),X=cv.getContext('2d');let cs=15,px=0,py=0,z=1,bc=15,RW=300,RH=400,C={ln:'#ccc',fl:'#eee'};
+function th(){const s=getComputedStyle(document.documentElement);C.ln=s.getPropertyValue('--ln');C.fl=s.getPropertyValue('--fl')}
+function clampCam(){const gw=W*cs,gh=H*cs;px=gw<=RW?(RW-gw)/2:Math.min(0,Math.max(RW-gw,px));py=gh<=RH?(RH-gh)/2:Math.min(0,Math.max(RH-gh,py))}
+function resize(){const r=cv.getBoundingClientRect(),dp=devicePixelRatio||1;RW=r.width;RH=r.height;cv.width=RW*dp;cv.height=RH*dp;X.setTransform(dp,0,0,dp,0,0);bc=Math.min(RW/W,RH/H);cs=bc*z;clampCam();th()}
+function zoomAt(f,mx,my){const nz=Math.min(6,Math.max(1,z*f));f=nz/z;z=nz;px=mx-(mx-px)*f;py=my-(my-py)*f;cs=bc*z;clampCam()}
+addEventListener('resize',resize);matchMedia('(prefers-color-scheme:dark)').addEventListener('change',th);
+function rr(x,y,w,h,r){X.beginPath();X.roundRect?X.roundRect(x,y,w,h,r):X.rect(x,y,w,h)}
+function drawT(t,tm,gh,ok){const d=ID[t.id],k=t.k,lw=(t.rot%2?t.ch:t.cw)*cs,lh=(t.rot%2?t.cw:t.ch)*cs,m=Math.min(lw,lh),sx=px+(t.x+t.cw/2)*cs,sy=py+(t.y+t.ch/2)*cs;
+X.save();X.translate(sx,sy);X.rotate(t.rot*Math.PI/2);X.globalAlpha=gh?.6:1;
+X.fillStyle=gh?(ok?'#2fd36b':'#ff4040'):k==='UP'?UC[d.i%7]:CATS[k].col;rr(-lw/2+.5,-lh/2+.5,lw-1,lh-1,Math.min(4,cs/3));X.fill();
+if(MOV[k]||(k==='PU'&&t.open)){X.strokeStyle='rgba(255,255,255,.5)';X.lineWidth=Math.max(1,cs*.08);const sp=cs*.6,off=tm*.001*(d.sp||6)*.5*cs*t.dir,s=Math.min(lw/2-2,cs*.28),q=t.dir;
+for(let a=0;a<lh;a+=sp){const y=((a-off)%lh+lh)%lh-lh/2;X.beginPath();X.moveTo(-s,y+s*.5*q);X.lineTo(0,y-s*.5*q);X.lineTo(s,y+s*.5*q);X.stroke()}}
+const bt=c=>{const r=Math.max(3,cs*.22);X.fillStyle=c;X.beginPath();X.arc(lw/2-r-1,lh/2-r-1,r,0,7);X.fill();X.strokeStyle='#fff';X.lineWidth=1;X.stroke()};
+if(k==='DR'){X.fillStyle='#000a';X.fillRect(-lw*.2,-lh/2,lw*.4,Math.max(3,cs*.2));X.fillStyle=EC[d.el];X.beginPath();X.arc(0,0,m*.18,0,7);X.fill()}
+else if(k==='HO'){X.fillStyle='rgba(255,170,50,'+(.55+.3*Math.sin(tm/150+t.uid))+')';X.beginPath();X.arc(0,0,m*.3,0,7);X.fill()}
+else if(k==='TP'){X.save();X.rotate(tm/400);X.strokeStyle='#fffa';X.lineWidth=2;X.setLineDash([4,4]);X.beginPath();X.arc(0,0,m*.32,0,7);X.stroke();X.restore()}
+else if(k==='RD'){const r=m*.38,a=tm/300;X.strokeStyle='#7ff';X.lineWidth=1.2;X.beginPath();X.arc(0,0,r,0,7);X.stroke();X.beginPath();X.moveTo(0,0);X.lineTo(r*Math.cos(a),r*Math.sin(a));X.stroke()}
+else if(k==='BA'){X.fillStyle='#0005';for(let a=-lh/2+3;a<lh/2-2;a+=Math.max(4,cs*.3))X.fillRect(-lw/2+2,a,lw-4,Math.max(2,cs*.12))}
+else if(k==='PU'){X.fillStyle=t.open?'#0003':'#d33';if(t.open){X.fillRect(-lw/2+1,-2,lw*.15,4);X.fillRect(lw/2-1-lw*.15,-2,lw*.15,4)}else X.fillRect(-lw/2+1,-Math.max(2,cs*.1),lw-2,Math.max(4,cs*.2));bt(t.open?'#2fd36b':'#e33')}
+else if(k==='IN'){X.fillStyle='#fff';X.beginPath();X.moveTo(0,-m*.3*t.dir);X.lineTo(-m*.2,m*.1*t.dir);X.lineTo(m*.2,m*.1*t.dir);X.fill();bt('#4a8cff')}
+X.lineWidth=d.r===4?2.4:1.4;X.strokeStyle=rc(d);if(d.r===4&&!gh){X.shadowColor=rc(d);X.shadowBlur=6+d.lv*3}rr(-lw/2+1,-lh/2+1,lw-2,lh-2,Math.min(4,cs/3));X.stroke();X.shadowBlur=0;X.restore();
+if(Math.min(t.cw,t.ch)*cs>=16){X.fillStyle='#fff';X.font='bold '+Math.min(14,cs*.55)+'px system-ui';X.textAlign='center';X.textBaseline='middle';X.fillText(k==='UP'?SYM[d.i%7]:k,sx,sy);
+if(k==='RD'&&t.last&&Math.min(t.cw,t.ch)>=2)X.fillText(fmt(t.last),sx,sy+cs*.7)}}
+function draw(tm){X.clearRect(0,0,RW,RH);X.fillStyle=C.fl;X.fillRect(px,py,W*cs,H*cs);
+if(cs>=9){X.strokeStyle=C.ln;X.lineWidth=.5;X.beginPath();for(let i=0;i<=W;i++){X.moveTo(px+i*cs,py);X.lineTo(px+i*cs,py+H*cs)}for(let i=0;i<=H;i++){X.moveTo(px,py+i*cs);X.lineTo(px+W*cs,py+i*cs)}X.stroke()}
+X.fillStyle='#2fd36b';X.fillRect(px+10*cs,py+(H-1)*cs,4*cs,cs);X.fillStyle='#003';X.font='bold '+Math.max(8,cs*.5)+'px system-ui';X.textAlign='center';X.textBaseline='middle';X.fillText('VENDER',px+12*cs,py+(H-.5)*cs);
+for(const t of T)drawT(t,tm);
+for(const o of ores){const sx=px+o.x*cs,sy=py+o.y*cs,r=Math.max(2.2,cs*.2);X.fillStyle=EC[o.el];X.beginPath();X.arc(sx,sy,r,0,7);X.fill();if(o.rf){X.strokeStyle='#fff';X.lineWidth=1;X.stroke()}
+if(o.cor){X.strokeStyle=CC[o.cor.v];X.lineWidth=2;X.beginPath();X.arc(sx,sy,r+2+Math.sin(tm/80),0,7);X.stroke()}
+if(o.rd>0){const s=fmt(o.v)+(o.rf?' ♨':'')+(o.cor?' ☢'+CVN[o.cor.v]+' '+o.cor.t.toFixed(1)+'s':'');X.font='bold 11px system-ui';const w=X.measureText(s).width+8;X.fillStyle='#000c';X.fillRect(sx-w/2,sy-r-19,w,15);X.fillStyle='#fff';X.textAlign='center';X.textBaseline='middle';X.fillText(s,sx,sy-r-11.5)}}
+if(mode==='place'&&hov){const p=ppos(hov),[cw,ch]=dims(sel,rot);drawT({id:sel,k:ID[sel].k,x:p.x,y:p.y,rot,cw,ch,dir:1,open:true,uid:0,last:0},tm,true,fits(sel,p.x,p.y,rot))}
+else if(mode==='rm'&&hov){X.strokeStyle='#ff4040';X.lineWidth=3;const t=G[hov.y*W+hov.x];X.strokeRect(px+(t?t.x:hov.x)*cs,py+(t?t.y:hov.y)*cs,(t?t.cw:1)*cs,(t?t.ch:1)*cs)}
+X.font='bold 12px system-ui';X.textAlign='center';for(const f of fl){X.globalAlpha=Math.min(1,f.t);X.fillStyle='#fff';X.strokeStyle='#000';X.lineWidth=3;const sx=px+f.x*cs,sy=py+(f.y-(1-f.t)*2)*cs;X.strokeText(f.s,sx,sy);X.fillText(f.s,sx,sy)}X.globalAlpha=1}
+let lt=performance.now(),sv=0,ac=0;
+function loop(n){try{const dt=Math.min(.1,(n-lt)/1e3);lt=n;upd(dt);draw(n);sv+=dt;ac+=dt;if(ac>=1){ips=ips*.8+acc*.2;acc=0;ac=0}if(sv>5){sv=0;save()}hud();errs=0}
+catch(e){heal();errs++;if(errs>5){ores=[];fl=[]}fixed()}requestAnimationFrame(loop)}
+addEventListener('error',()=>{heal();fixed()});
+let lastHud='';function hud(){const m='$'+fmt(S.m);if(m!==$('#money').textContent)$('#money').textContent=m;
+const i='Prestigio '+S.p+'/100 · x'+f1(mult(S.p))+' · Colección '+Object.keys(S.col).length+'/'+TOTAL+'<br>Drops '+ores.length+'/'+cap()+' · Máq. '+T.length+'/'+mcap()+' · $'+fmt(ips)+'/s';if(i!==lastHud){lastHud=i;$('#info').innerHTML=i}}
+// entrada
+const ppos=c=>{const[cw,ch]=dims(sel,rot);return{x:c.x-Math.floor((cw-1)/2),y:c.y-Math.floor((ch-1)/2)}};
+function cellAt(x,y){const gx=Math.floor((x-px)/cs),gy=Math.floor((y-py)/cs);return gx>=0&&gy>=0&&gx<W&&gy<H?{x:gx,y:gy}:null}
+function act(c){if(!c)return;
+if(mode==='place'){const p=ppos(c);if(!(S.inv[sel]>0))return;if(T.length>=mcap())return toast('Límite de máquinas alcanzado');
+if(fits(sel,p.x,p.y,rot)){mkT(sel,p.x,p.y,rot,1);if(--S.inv[sel]<=0){delete S.inv[sel];setMode(null)}if(panel==='inv')render()}}
+else if(mode==='rm'){const t=G[c.y*W+c.x];if(t){S.inv[t.id]=(S.inv[t.id]||0)+1;rem(t);if(panel==='inv')render()}}}
+function tap(c){if(!c)return;const t=G[c.y*W+c.x];if(!t)return;
+if(t.k==='PU'){t.open=!t.open;toast(t.open?'Compuerta abierta':ID[t.id].trap?'Compuerta cerrada: atrapa drops':'Compuerta cerrada: detiene drops')}
+else if(t.k==='IN'){t.dir*=-1;toast('Sentido invertido')}else toast(ID[t.id].name+' · '+ID[t.id].desc)}
+const P=new Map();let pl=0,st=null;const pd=()=>{const o=[...P.values()];return Math.hypot(o[0].x-o[1].x,o[0].y-o[1].y)||1},mid=()=>{const o=[...P.values()];return{x:(o[0].x+o[1].x)/2,y:(o[0].y+o[1].y)/2}};
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);P.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+if(P.size>=2){down=false;st=null;pl=pd();return}
+st={x:e.offsetX,y:e.offsetY,lx:e.offsetX,ly:e.offsetY,mv:0};down=true;hov=cellAt(e.offsetX,e.offsetY);lastC=-1;if(mode&&hov){lastC=hov.x+hov.y*W;act(hov)}});
+cv.addEventListener('pointermove',e=>{const p=P.get(e.pointerId),nx=e.offsetX,ny=e.offsetY;
+if(P.size>=2&&p){const w=mid();p.x=nx;p.y=ny;const dd=pd(),m=mid();zoomAt(dd/pl,m.x,m.y);px+=m.x-w.x;py+=m.y-w.y;clampCam();pl=dd;return}
+if(p){p.x=nx;p.y=ny}hov=cellAt(nx,ny);if(!down||!st)return;
+st.mv=Math.max(st.mv,Math.hypot(nx-st.x,ny-st.y));
+if(mode){if(hov&&hov.x+hov.y*W!==lastC){lastC=hov.x+hov.y*W;act(hov)}}
+else if(st.mv>6){px+=nx-st.lx;py+=ny-st.ly;clampCam()}st.lx=nx;st.ly=ny});
+const up=e=>{P.delete(e.pointerId);if(st&&!mode&&st.mv<=6&&P.size===0&&e.type==='pointerup')tap(cellAt(st.x,st.y));if(P.size===0){down=false;st=null}};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.deltaY<0?1.15:.87,e.offsetX,e.offsetY)},{passive:false});
+addEventListener('keydown',e=>{if(e.key==='r'||e.key==='R')rot=(rot+1)%4;if(e.key==='x'||e.key==='Escape')setMode(null)});
+$('#zi').onclick=()=>zoomAt(1.3,RW/2,RH/2);$('#zo').onclick=()=>zoomAt(.77,RW/2,RH/2);$('#zf').onclick=()=>{z=1;cs=bc;clampCam()};
+function setMode(m,id){mode=m;sel=id||null;$('#br').classList.toggle('on',m==='rm');
+$('#hint').textContent=m==='place'?'Colocando '+ID[sel].name+' · toca o arrastra · ↻ gira · 2 dedos: zoom':m==='rm'?'Quitar: toca una máquina (vuelve al inventario)':'Arrastra para mover · toca botones de compuertas e inversores'}
+$('#br').onclick=()=>setMode(mode==='rm'?null:'rm');$('#bo').onclick=()=>{rot=(rot+1)%4;toast('Giro: '+['↑ arriba','→ derecha','↓ abajo','← izquierda'][rot])};
+// ===== cofres, revelado, partidas y layouts =====
+const rn=d=>d.r===4?'Legendario '+LVN[d.lv]:RA[d.r].n,rc=d=>d.r===4?LVC[d.lv]:RA[d.r].c,lay=()=>T.map(t=>[t.id,t.x,t.y,t.rot,t.dir,t.open?1:0]);
+const CH=[{n:'Cofre de Madera',p:1e5,o:[60,30,9,1],c:'#a8742f'},{n:'Cofre de Bronce',p:2.5e5,o:[40,35,20,5],c:'#cd7f32'},{n:'Cofre de Plata',p:5e5,o:[20,35,32,13],c:'#c0c8d0'},{n:'Cofre de Oro',p:1e6,o:[5,25,40,30],c:'#ffd24a'},{n:'Cofre de Platino',p:2.5e6,o:[0,10,40,50],c:'#9fe8ff'},{n:'Cofre de Diamante',p:5e6,o:[0,0,35,65],c:'#7ad0ff'}];
+const chRow=(c,i)=>'<div class="it"><div><b style="color:'+c.c+'">📦 '+c.n+'</b><small>'+c.o.map((v,j)=>v?RA[j].n+' '+v+'%':'').filter(Boolean).join(' · ')+'</small></div><button data-id="'+i+'">$'+fmt(c.p)+'</button></div>';
+function reveal(t,ids){const e=$('#rw');e.innerHTML='<div class="rb"><b>'+t+'</b>'+ids.map((id,i)=>{const d=ID[id];return'<div class="rc" style="border-color:'+rc(d)+';box-shadow:0 0 14px '+rc(d)+'88;animation-delay:'+i*.15+'s"><b style="color:'+rc(d)+'">'+d.name+'</b><small>'+rn(d)+' · '+d.desc+'</small></div>'}).join('')+'<button>Aceptar</button></div>';e.style.display='flex';e.onclick=ev=>{if(ev.target.closest('button')||ev.target===e)e.style.display='none'}}
+function openChest(i){const c=CH[i];if(!c||S.m<c.p)return toast('No te alcanza el dinero');S.m-=c.p;let x=Math.random()*100,a=0,r=3;for(let j=0;j<4;j++){a+=c.o[j];if(x<a){r=j;break}}const l=RB[r],d=l[Math.floor(Math.random()*l.length)];S.inv[d.id]=(S.inv[d.id]||0)+1;S.col[d.id]=1;reveal(c.n,[d.id])}
+const slotKey=n=>'fi3_'+n,getSlot=n=>{try{return JSON.parse(localStorage.getItem(slotKey(n))||'null')}catch(e){return null}};
+function reset(){S={m:150,p:0,inv:{},col:{},lay:{}};T=[];G.fill(null);ores=[];fl=[]}
+function loadSlot(n,off){reset();loadD(getSlot(n),off);slot=n}
+function boot(){try{let a=+localStorage.getItem('fi3_a')||0;if(!a){a=1;const o=localStorage.getItem('fi2');if(o&&!localStorage.getItem(slotKey(1)))localStorage.setItem(slotKey(1),o)}loadSlot(a,true);save()}catch(e){heal()}}
+function plan(y){const inv={...S.inv};let miss=0;for(const e of y.t){if(T.some(t=>t.id===e[0]&&t.x===e[1]&&t.y===e[2]&&t.rot===e[3]))continue;if(inv[e[0]]>0)inv[e[0]]--;else miss++}return miss}
+function applyLay(y,rep,buy){if(!y)return;if(rep)for(const t of T.slice()){S.inv[t.id]=(S.inv[t.id]||0)+1;rem(t)}
+let ok=0,miss=0,bl=0,bo=0;for(const e of y.t){const[id,x,yy,r,dr,op]=e;if(!ID[id])continue;if(T.some(t=>t.id===id&&t.x===x&&t.y===yy&&t.rot===r))continue;
+if(!(S.inv[id]>0)&&buy&&ID[id].p&&S.m>=ID[id].p){S.m-=ID[id].p;S.inv[id]=(S.inv[id]||0)+1;S.col[id]=1;bo++}
+if(!(S.inv[id]>0)){miss++;continue}if(T.length>=mcap()||!fits(id,x,yy,r)){bl++;continue}
+mkT(id,x,yy,r,dr,op);if(--S.inv[id]<=0)delete S.inv[id];ok++}
+toast('Colocadas '+ok+(bo?' (compradas '+bo+')':'')+' · faltan '+miss+(bl?' · bloqueadas '+bl:''))}
+let mtab=0,arm2='';
+function menuR(L){$('#st').textContent='Menú';tabs($('#t1'),['Partidas','Layouts'],mtab,i=>{mtab=i;arm2='';render()});tabs($('#t2'),[],0,()=>{});L.dataset.m='menu';let h;
+if(mtab===0){h='<small style="color:var(--mu)">Se guarda solo cada 5 s en la partida activa (★).</small><button data-a="tut" style="float:right">❓ Tutorial</button>';for(let n=1;n<=5;n++){const d=n===slot?snap():getSlot(n),b=(a,t)=>'<button data-a="'+a+'" data-n="'+n+'">'+t+'</button>';
+h+='<div class="it" style="margin-top:6px'+(n===slot?';border-color:var(--ac)':'')+'"><div><b>'+(n===slot?'★ ':'')+'Partida '+n+'</b><small>'+(d?'Prestigio '+d.p+' · $'+fmt(d.m)+' · Colección '+d.col.length+'/'+TOTAL+' · '+new Date(d.ts).toLocaleString():'Vacía')+'</small></div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'+b('sv','Guardar')+(d?b('ld','Cargar')+b('dl',arm2==='dl'+n?'¿Seguro?':'✕'):b('nw','Nueva'))+'</div></div>'}}
+else{h='<small style="color:var(--mu)">Los layouts viven dentro de esta partida. «Comprar+Aplicar» compra lo que falte (si te alcanza) y lo coloca.</small>';for(const k of ['a','1','2','3']){const y=S.lay[k],b=(a,t)=>'<button data-a="'+a+'" data-n="'+k+'">'+t+'</button>';
+h+='<div class="it" style="margin-top:6px"><div><b>'+(k==='a'?'⏮ Pre-prestigio (auto)':'Layout '+k)+'</b><small>'+(y?y.t.length+' piezas · te faltan '+plan(y)+' · '+new Date(y.ts).toLocaleDateString():'Vacío')+'</small></div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'+(k==='a'?'':b('ls','Guardar'))+(y?b('la','Aplicar')+b('lb','Comprar+Aplicar')+b('lr','Reemplazar'):'')+'</div></div>'}}
+L.innerHTML=h}
+function menuClk(b){const a=b.dataset.a,n=b.dataset.n;
+if(a==='tut'){openP('menu');tut(0);return}
+if(a==='sv'){slot=+n;save();arm2='';toast('Guardado en la partida '+n)}
+else if(a==='ld'){save();loadSlot(+n,true);save();toast('Partida '+n+' cargada')}
+else if(a==='nw'){save();reset();slot=+n;save();toast('Nueva partida en la ranura '+n)}
+else if(a==='dl'){if(arm2!=='dl'+n){arm2='dl'+n;render();return}arm2='';if(+n===slot){reset();save()}else localStorage.removeItem(slotKey(n));toast('Partida '+n+' borrada')}
+else if(a==='ls'){S.lay[n]={ts:Date.now(),t:lay()};toast('Layout '+n+' guardado ('+T.length+' piezas)')}
+else if(a==='la'||a==='lb'||a==='lr')applyLay(S.lay[n],a==='lr',a==='lb');
+render()}
+// ===== tutorial =====
+const TUT=['¡Bienvenido a <b>Fábrica Infinita</b>! 🏭 Tu meta: armar una línea de producción que genere drops y los venda para ganar dinero. Te explico lo básico en un minuto.',
+'1️⃣ Toca <b>🛒 Tienda</b> y compra un <b>Dropper</b> (saca drops) y varias <b>Cintas</b> (los mueven). Empiezas con $150.',
+'2️⃣ Abre <b>🎒 Inv.</b>, toca <b>Colocar</b> y luego toca o arrastra sobre el mapa. <b>↻ Girar</b> cambia la dirección y <b>🗑 Quitar</b> devuelve piezas al inventario.',
+'3️⃣ Apunta el dropper a una cinta que lleve los drops hasta la zona verde <b>VENDER</b> (abajo del mapa). ¡Ahí se convierten en dinero!',
+'4️⃣ Los <b>Upgraders</b> y <b>Hornos</b> aumentan el valor de los drops. Si su elemento coincide con el del drop, ganas bono extra. Cada tipo de upgrader funciona distinto.',
+'5️⃣ <b>Compuertas</b> e <b>Inversores</b> tienen un mini botón: tócalo para abrir/cerrar o invertir el sentido. El <b>Radar</b> muestra el valor de cada drop que pasa.',
+'⚠️ Los upgraders <b>corrosivos</b> ☢ suben mucho el valor, pero el drop se destruye en 3 s si no pasa por un <b>Neutralizante</b> de su variedad (o un horno purificador).',
+'📦 En la tienda hay <b>Cofres</b> con objetos al azar. Con dinero suficiente puedes <b>⭐ Prestigiar</b>: reinicias, pero ganas más ingresos y objetos <b>Legendarios</b>.',
+'💾 En <b>Menú</b> tienes 5 partidas y layouts para repetir tu diseño después de prestigiar. Zoom: pellizca con 2 dedos. Puedes repetir esta guía en Menú > ❓ Tutorial. ¡Suerte!'];
+let ti=-1;
+function tut(i){ti=i;const el=$('#tu');if(i<0||i>=TUT.length){el.style.display='none';try{localStorage.setItem('fi3_tut','1')}catch(err){}return}
+el.style.display='block';el.innerHTML='<b>🤖 Guía ('+(i+1)+'/'+TUT.length+')</b><div>'+TUT[i]+'</div><div class="tb"><button data-t="s">Saltar</button><span>'+(i>0?'<button data-t="b">◀</button> ':'')+'<button data-t="n" class="on">'+(i===TUT.length-1?'¡A jugar!':'Siguiente ▶')+'</button></span></div>'}
+$('#tu').onclick=ev=>{const b=ev.target.closest('button');if(!b)return;const t=b.dataset.t;tut(t==='s'?-1:t==='b'?ti-1:ti+1)};
+// paneles
+function tabs(el,names,s,fn){el.style.display=names.length?'flex':'none';el.innerHTML=names.map((n,i)=>'<button class="'+(i===s?'on':'')+'" data-i="'+i+'">'+n+'</button>').join('');el._f=fn}
+['#t1','#t2'].forEach(s=>$(s).addEventListener('click',e=>{const b=e.target.closest('button');if(b)$(s)._f(+b.dataset.i)}));
+const row=(d,btn,n)=>'<div class="it"><div><b style="color:'+rc(d)+'">'+d.name+(n?' ×'+n:'')+'</b><small>'+rn(d)+' · '+d.desc+'</small></div><button data-id="'+d.id+'">'+btn+'</button></div>';
+function render(){const L=$('#list'),sc=L.scrollTop;
+if(panel==='shop'){$('#st').textContent='Tienda · Común a Épico';const g=GROUPS[grp];tabs($('#t1'),GROUPS.map(x=>x.n),grp,i=>{grp=i;sub=0;render();$('#list').scrollTop=0});
+tabs($('#t2'),g.s.length>1?g.s.map(x=>x.l):[],sub,i=>{sub=i;render();$('#list').scrollTop=0});
+if(g.ch){L.innerHTML=CH.map(chRow).join('');L.dataset.m='chest'}else{L.innerHTML=g.s[sub].a.filter(d=>d.p).map(d=>row(d,'$'+fmt(d.p))).join('');L.dataset.m='buy'}}
+else if(panel==='inv'){$('#st').textContent='Inventario';tabs($('#t1'),['Objetos'],0,()=>{});tabs($('#t2'),[],0,()=>{});const ids=Object.keys(S.inv).sort((a,b)=>ID[b].r-ID[a].r||(a<b?-1:1));
+L.innerHTML=ids.length?ids.map(id=>row(ID[id],'Colocar',S.inv[id])).join(''):'<pre>Vacío. Compra en la tienda.</pre>';L.dataset.m='use'}
+else if(panel==='pres'){$('#st').textContent='Prestigio';tabs($('#t1'),['Prestigiar'],0,()=>{});tabs($('#t2'),[],0,()=>{});const n=S.p+1;
+if(n>100)L.innerHTML='<pre>¡Prestigio máximo (100)!</pre>';else{const o=odds(n);L.innerHTML='<pre>Prestigio '+S.p+' → '+n+'\nCosto: $'+fmt(cost(n))+'\nIngresos: x'+f1(mult(S.p))+' → x'+f1(mult(n))+'\nLímite de drops: '+cap()+' → '+(cap()+5)+'\nLímite de máquinas: '+mcap()+' → '+(mcap()+10)+'\nPremios: '+(1+Math.floor(n/10))+' (solo Legendarios; cada 10 prestigios, el primero es Épico o Místico seguro)\n\n'+LVN.map((r,i)=>'Legendario '+r+': '+(o[i]*100).toFixed(1)+'%').join('\n')+'\n\nAl prestigiar pierdes dinero, máquinas e inventario, pero conservas los Legendarios. Tu layout se guarda solo como «Pre-prestigio» (Menú > Layouts).</pre><button data-id="go" style="width:100%;background:#ffb020;color:#000;font-weight:700">⭐ Prestigiar</button>'}L.dataset.m='pres'}else if(panel==='menu'){menuR(L)}
+L.scrollTop=sc}
+$('#list').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const m=$('#list').dataset.m,id=b.dataset.id;
+if(m==='buy'){const d=ID[id];if(!d||!d.p)return;if(S.m<d.p)return toast('No te alcanza el dinero');S.m-=d.p;S.inv[id]=(S.inv[id]||0)+1;S.col[id]=1;toast('Comprado: '+d.name)}
+else if(m==='use'){setMode('place',id);panel=null;$('#sheet').style.display='none'}
+else if(m==='pres'){if(performance.now()>arm){arm=performance.now()+4000;b.textContent='¿Seguro? Toca otra vez';return}arm=0;const n=S.p+1;if(S.m<cost(n))return toast('Dinero insuficiente');
+S.lay.a={ts:Date.now(),t:lay()};const keep={};T.forEach(t=>{if(ID[t.id].r===4)keep[t.id]=(keep[t.id]||0)+1});for(const k in S.inv)if(ID[k]&&ID[k].r===4)keep[k]=(keep[k]||0)+S.inv[k];
+T=[];G.fill(null);ores=[];S.inv=keep;S.m=0;S.p=n;const w=roll(n);w.forEach(i=>{S.inv[i]=(S.inv[i]||0)+1;S.col[i]=1});save();reveal('¡Prestigio '+n+'!',w);render()}
+else if(m==='chest')openChest(+id);
+else if(m==='menu')menuClk(b)});
+function openP(p){panel=panel===p?null:p;$('#sheet').style.display=panel?'flex':'none';if(panel){arm=0;render()}}
+$('#bm').onclick=()=>openP('menu');$('#bs').onclick=()=>openP('shop');$('#bi').onclick=()=>openP('inv');$('#pb').onclick=()=>openP('pres');$('#x').onclick=()=>openP(panel);
+boot();resize();setMode(null);try{if(!localStorage.getItem('fi3_tut'))setTimeout(()=>tut(0),600)}catch(err){}requestAnimationFrame(loop);addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+</script></body></html>
